@@ -158,32 +158,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 const tg=window.Telegram.WebApp;tg.ready();tg.expand();
 let menu=[],cart=[],sel=null,qty=1;
 function fmt(p){return p.toLocaleString('uz-UZ')+" so'm";}
-async function load(){
-  document.getElementById('items-wrap').innerHTML='<div class="loading"><div class="spinner"></div></div>';
-  for(let attempt=0; attempt<3; attempt++){
-    try{
-      const ctrl = new AbortController();
-      const timeout = setTimeout(()=>ctrl.abort(), 10000);
-      const r=await fetch('/api/menu', {signal: ctrl.signal});
-      clearTimeout(timeout);
-      const d=await r.json();
-      document.getElementById('rname').textContent=d.restaurant.name;
-      document.getElementById('rhours').textContent=d.restaurant.hours;
-      menu=d.items;
-      if(menu.length===0){
-        document.getElementById('items-wrap').innerHTML='<p class="empty">Hozircha menyu mavjud emas</p>';
-        return;
-      }
-      renderCats();renderItems('all');
+function load(){
+  try{
+    const d = __MENU_DATA__;
+    document.getElementById('rname').textContent=d.restaurant.name;
+    document.getElementById('rhours').textContent=d.restaurant.hours;
+    menu=d.items;
+    if(menu.length===0){
+      document.getElementById('items-wrap').innerHTML='<p class="empty">Hozircha menyu mavjud emas</p>';
       return;
-    }catch(e){
-      if(attempt<2){
-        document.getElementById('items-wrap').innerHTML='<div class="loading"><div class="spinner"></div></div><p style="text-align:center;opacity:.5;font-size:13px">Yuklanmoqda...</p>';
-        await new Promise(r=>setTimeout(r,3000));
-      } else {
-        document.getElementById('items-wrap').innerHTML='<p class="empty">Menyu yuklanmadi. Qayta oching.</p>';
-      }
     }
+    renderCats();renderItems('all');
+  }catch(e){
+    document.getElementById('items-wrap').innerHTML='<p class="empty">Xato yuz berdi</p>';
   }
 }
 function renderCats(){
@@ -250,7 +237,13 @@ load();
 
 @flask_app.route("/menu")
 def menu_page():
-    return render_template_string(MENU_HTML)
+    import json as _json
+    data = _json.dumps({
+        "restaurant": restaurant,
+        "items": menu_items
+    }, ensure_ascii=False)
+    html = MENU_HTML.replace("__MENU_DATA__", data)
+    return html
 
 @flask_app.route("/api/menu")
 def api_menu():
