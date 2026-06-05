@@ -37,6 +37,32 @@ orders     = {}
 order_cnt  = [0]
 item_cnt   = [0]
 
+DATA_FILE = "/tmp/restaurant_data.json"
+
+def save_data():
+    try:
+        with open(DATA_FILE, 'w') as f:
+            json.dump({
+                "menu_items": menu_items,
+                "restaurant": restaurant,
+                "item_cnt": item_cnt[0],
+            }, f, ensure_ascii=False)
+    except Exception as e:
+        logging.error(f"save_data xato: {e}")
+
+def load_data():
+    global menu_items, restaurant
+    try:
+        with open(DATA_FILE, 'r') as f:
+            data = json.load(f)
+            menu_items.extend(data.get("menu_items", []))
+            restaurant.update(data.get("restaurant", {}))
+            item_cnt[0] = data.get("item_cnt", 0)
+    except Exception:
+        pass
+
+load_data()
+
 STATUS = {
     "new":      "🆕 Yangi",
     "accepted": "✅ Qabul qilindi",
@@ -442,6 +468,7 @@ async def add_item_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "desc": context.user_data['item_desc'], "price": context.user_data['item_price'],
             "category": context.user_data['item_cat'], "photo": photo_b64}
     menu_items.append(item)
+    save_data()
     await update.message.reply_text(
         f"✅ *{item['name']}* qo'shildi!\n💰 {fmt(item['price'])}\n📂 {item['category']}",
         parse_mode='Markdown', reply_markup=admin_kb())
@@ -455,7 +482,8 @@ async def del_item(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global menu_items
     item = next((i for i in menu_items if i['id']==item_id), None)
     if item:
-        menu_items = [i for i in menu_items if i['id']!=item_id]
+        menu_items[:] = [i for i in menu_items if i['id']!=item_id]
+        save_data()
         await q.message.reply_text(f"🗑 *{item['name']}* o'chirildi!", parse_mode='Markdown', reply_markup=admin_kb())
     return ConversationHandler.END
 
@@ -484,6 +512,7 @@ async def set_field(update: Update, context: ContextTypes.DEFAULT_TYPE):
     fields = {"setname":"name","setbio":"bio","setaddress":"address","setphone":"phone","sethours":"hours"}
     if cmd in fields:
         restaurant[fields[cmd]] = val
+        save_data()
         await update.message.reply_text(f"✅ Yangilandi: *{val}*", parse_mode='Markdown', reply_markup=admin_kb())
 
 async def admin_orders_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
